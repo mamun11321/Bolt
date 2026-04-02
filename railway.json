@@ -1,9 +1,9 @@
 {
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "python3 bolt.py",
+    "startCommand": "python bolt.py",
     "restartPolicyType": "ON_FAILURE"
   }
 }
