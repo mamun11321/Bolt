@@ -94,18 +94,25 @@ class OTPBot:
         try:
             chrome_options = Options()
             
-            # Railway এ headless mode
             if IS_RAILWAY:
+                # Railway এর জন্য Headless Mode
                 chrome_options.add_argument('--headless')
                 chrome_options.add_argument('--no-sandbox')
                 chrome_options.add_argument('--disable-dev-shm-usage')
                 chrome_options.add_argument('--disable-gpu')
                 chrome_options.add_argument('--window-size=1920,1080')
                 chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+                chrome_options.add_argument('--disable-extensions')
+                chrome_options.add_argument('--disable-setuid-sandbox')
+                chrome_options.add_argument('--remote-debugging-port=9222')
                 
-                from webdriver_manager.chrome import ChromeDriverManager
-                service = Service(ChromeDriverManager().install())
+                # Chrome binary path
+                chrome_options.binary_location = "/usr/bin/google-chrome"
+                
+                # ChromeDriver path
+                service = Service(executable_path="/usr/local/bin/chromedriver")
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                logger.info("✅ Browser opened on Railway (Headless Mode)")
             else:
                 # লোকাল পিসির জন্য
                 chromedriver_path = r"C:\Users\mamun\Desktop\chromedriver.exe"
@@ -119,8 +126,8 @@ class OTPBot:
                 
                 service = Service(chromedriver_path)
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                logger.info("✅ Browser opened on Local PC")
             
-            logger.info("✅ Browser opened")
             return True
         except Exception as e:
             logger.error(f"Browser error: {e}")
@@ -418,7 +425,7 @@ class OTPBot:
                 
                 # প্রতি 1.5 সেকেন্ডে ব্রাউজার রিফ্রেশ
                 self.refresh_counter += 1
-                if self.refresh_counter >= 3:  # 0.5 * 3 = 1.5 সেকেন্ড
+                if self.refresh_counter >= 3:
                     self.driver.refresh()
                     logger.debug("🔄 Browser refreshed (1.5 seconds)")
                     self.refresh_counter = 0
