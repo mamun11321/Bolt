@@ -7,9 +7,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+# bolt.py কপি করুন
 COPY bolt.py .
+
+# প্যাকেজ ইনস্টল করুন
+RUN pip install selenium python-telegram-bot webdriver-manager
 
 CMD ["python", "bolt.py"]
