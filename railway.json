@@ -3,7 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python bolt.py",
+    "startCommand": "python3 bolt.py",
     "restartPolicyType": "ON_FAILURE"
   }
 }
