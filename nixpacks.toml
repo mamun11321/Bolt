@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["chromium", "chromedriver", "python311"]
-
-[phases.install]
-cmds = ["python3 -m pip install selenium python-telegram-bot"]
-
-[phases.start]
-cmd = "python3 bolt.py"
