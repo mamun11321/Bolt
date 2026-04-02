@@ -1,9 +1,0 @@
-{
-  "build": {
-    "builder": "DOCKERFILE"
-  },
-  "deploy": {
-    "startCommand": "python bolt.py",
-    "restartPolicyType": "ON_FAILURE"
-  }
-}
