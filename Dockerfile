@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Chrome Browser ইনস্টল করুন (নির্দিষ্ট ভার্সন)
+# Chrome Browser ইনস্টল করুন
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
