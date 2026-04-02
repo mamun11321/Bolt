@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bolt SMS - সম্পূর্ণ অটোমেটিক OTP মনিটর বট
+Bolt SMS - সম্পূর্ণ অটোমেটিক OTP মনিটর বট (Railway উপযোগী)
 - 0.5 সেকেন্ড পরপর OTP চেক করে
 - প্রতি 1.5 সেকেন্ড পরপর ব্রাউজার রিফ্রেশ করে
 - চালু হওয়ার সাথে সাথে আজকের সব OTP ফরওয়ার্ড করে
@@ -33,8 +33,8 @@ BASE_URL = "http://93.190.143.35"
 LOGIN_URL = f"{BASE_URL}/ints/Login"
 SMS_PAGE_URL = f"{BASE_URL}/ints/agent/SMSCDRReports"
 
-# ChromeDriver পাথ - Desktop এ রাখুন
-CHROMEDRIVER_PATH = r"C:\Users\mamun\Desktop\chromedriver.exe"
+# Railway এ headless mode চালানোর জন্য চেক
+IS_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') is not None
 # =================================
 
 logging.basicConfig(
@@ -66,6 +66,10 @@ class OTPBot:
         self.otp_regex = re.compile('|'.join(patterns), re.IGNORECASE)
         
         logger.info("🤖 Bolt SMS OTP Monitor Bot Initialized")
+        if IS_RAILWAY:
+            logger.info("🚀 Running on Railway (Headless Mode)")
+        else:
+            logger.info("💻 Running on Local PC (Browser Mode)")
     
     def _load_processed_otps(self):
         try:
@@ -88,18 +92,33 @@ class OTPBot:
     
     def setup_browser(self):
         try:
-            if not os.path.exists(CHROMEDRIVER_PATH):
-                logger.error(f"❌ ChromeDriver not found at: {CHROMEDRIVER_PATH}")
-                logger.info("💡 Please copy chromedriver.exe to Desktop")
-                return False
-            
             chrome_options = Options()
-            chrome_options.add_argument('--start-maximized')
-            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             
-            service = Service(CHROMEDRIVER_PATH)
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # Railway এ headless mode
+            if IS_RAILWAY:
+                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920,1080')
+                chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+                
+                from webdriver_manager.chrome import ChromeDriverManager
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            else:
+                # লোকাল পিসির জন্য
+                chromedriver_path = r"C:\Users\mamun\Desktop\chromedriver.exe"
+                if not os.path.exists(chromedriver_path):
+                    logger.error(f"❌ ChromeDriver not found at: {chromedriver_path}")
+                    return False
+                
+                chrome_options.add_argument('--start-maximized')
+                chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+                chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                
+                service = Service(chromedriver_path)
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
             
             logger.info("✅ Browser opened")
             return True
@@ -189,20 +208,62 @@ class OTPBot:
             logger.error(f"Login error: {e}")
             return False
     
+    def extract_platform(self, message, client):
+        """মেসেজ এবং ক্লায়েন্ট থেকে প্ল্যাটফর্মের নাম বের করে"""
+        message_lower = message.lower()
+        client_lower = str(client).lower()
+        
+        if 'telegram' in message_lower or 'telegram' in client_lower:
+            return "📨 Telegram"
+        elif 'whatsapp' in message_lower or 'whatsapp' in client_lower:
+            return "💚 WhatsApp"
+        elif 'instagram' in message_lower:
+            return "📸 Instagram"
+        elif 'facebook' in message_lower or 'fb' in message_lower:
+            return "📘 Facebook"
+        elif 'gmail' in message_lower or 'google' in message_lower:
+            return "📧 Gmail"
+        elif 'twitter' in message_lower or 'x.com' in message_lower:
+            return "🐦 Twitter/X"
+        elif 'apple' in message_lower or 'icloud' in message_lower:
+            return "🍎 Apple"
+        elif 'microsoft' in message_lower or 'outlook' in message_lower:
+            return "💻 Microsoft"
+        elif 'amazon' in message_lower:
+            return "📦 Amazon"
+        elif 'paypal' in message_lower:
+            return "💰 PayPal"
+        elif 'binance' in message_lower or 'crypto' in message_lower:
+            return "📊 Binance/Crypto"
+        elif 'discord' in message_lower:
+            return "🎮 Discord"
+        elif 'spotify' in message_lower:
+            return "🎵 Spotify"
+        elif 'netflix' in message_lower:
+            return "📺 Netflix"
+        elif 'tiktok' in message_lower:
+            return "🎬 TikTok"
+        elif 'signal' in message_lower:
+            return "🔒 Signal"
+        else:
+            return "📱 Other"
+    
     def extract_otp(self, message):
         if not isinstance(message, str):
             message = str(message)
         
         patterns = [
-            r'code[:\s]*(\d+)',
-            r'OTP[:\s]*(\d+)',
-            r'Telegram code[:\s]*(\d+)',
-            r'\b(\d{4})\b',
-            r'\b(\d{5})\b',
-            r'\b(\d{6})\b',
+            (r'code[:\s]*(\d+)', 'code'),
+            (r'OTP[:\s]*(\d+)', 'OTP'),
+            (r'Telegram code[:\s]*(\d+)', 'Telegram'),
+            (r'WhatsApp code[:\s]*([\d-]+)', 'WhatsApp'),
+            (r'verification code[:\s]*(\d+)', 'verification'),
+            (r'\b(\d{4})\b', '4 digit'),
+            (r'\b(\d{5})\b', '5 digit'),
+            (r'\b(\d{6})\b', '6 digit'),
         ]
         
-        for pattern in patterns:
+        for pattern, name in patterns:
             match = re.search(pattern, message, re.IGNORECASE)
             if match:
                 return match.group(1)
@@ -270,6 +331,7 @@ class OTPBot:
                 sms_id = f"{sms['time']}_{sms['phone']}_{sms['message'][:50]}"
                 if sms_id not in self.processed_otps:
                     phone = self.hide_phone(sms['phone'])
+                    platform = self.extract_platform(sms['message'], sms['client'])
                     
                     msg = f"""
 📜 **Previous OTP**
@@ -277,7 +339,7 @@ class OTPBot:
 
 📅 **Time:** `{sms['time']}`
 📱 **Phone:** `{phone}`
-👤 **Client:** `{sms['client']}`
+{platform}
 
 🔐 **OTP Code:** `{otp}`
 
@@ -322,9 +384,10 @@ class OTPBot:
                         if sms_id not in self.processed_otps:
                             otp = self.extract_otp(sms['message'])
                             if otp:
-                                logger.info(f"🆕 NEW OTP! {sms['time']} - {sms['phone']}")
-                                
+                                platform = self.extract_platform(sms['message'], sms['client'])
                                 phone = self.hide_phone(sms['phone'])
+                                
+                                logger.info(f"🆕 NEW OTP! {sms['time']} - {phone} - {platform}")
                                 
                                 msg = f"""
 🆕 **NEW OTP!**
@@ -332,7 +395,7 @@ class OTPBot:
 
 📅 **Time:** `{sms['time']}`
 📱 **Phone:** `{phone}`
-👤 **Client:** `{sms['client']}`
+{platform}
 
 🔐 **OTP Code:** `{otp}`
 
@@ -359,7 +422,7 @@ class OTPBot:
                     self.driver.refresh()
                     logger.debug("🔄 Browser refreshed (1.5 seconds)")
                     self.refresh_counter = 0
-                    await asyncio.sleep(1.5)  # রিফ্রেশের পর 1.5 সেকেন্ড অপেক্ষা
+                    await asyncio.sleep(1.5)
                     
             except WebDriverException as e:
                 logger.error(f"Driver error: {e}")
@@ -384,6 +447,10 @@ class OTPBot:
         print(f"📱 Telegram: {GROUP_CHAT_ID}")
         print(f"⚡ Check Interval: 0.5 seconds")
         print(f"🔄 Browser Refresh: Every 1.5 seconds")
+        if IS_RAILWAY:
+            print("🚀 Running on Railway (Headless Mode)")
+        else:
+            print("💻 Running on Local PC")
         print("="*60)
         
         print("\n🔧 Setting up browser...")
@@ -408,7 +475,8 @@ class OTPBot:
         print("⚡ Checking for new OTPs every 0.5 seconds")
         print("🔄 Browser refreshing every 1.5 seconds")
         print("📱 New OTPs will be forwarded immediately")
-        print("🌐 Browser window will stay open")
+        if not IS_RAILWAY:
+            print("🌐 Browser window will stay open")
         print("💾 Press Ctrl+C to stop")
         print("="*60 + "\n")
         
