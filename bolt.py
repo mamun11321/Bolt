@@ -109,7 +109,7 @@ class OTPBot:
                 # Chrome binary path
                 chrome_options.binary_location = "/usr/bin/google-chrome"
                 
-                # ChromeDriver path
+                # সরাসরি ChromeDriver ব্যবহার করুন (webdriver-manager ছাড়া)
                 service = Service(executable_path="/usr/local/bin/chromedriver")
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
                 logger.info("✅ Browser opened on Railway (Headless Mode)")
